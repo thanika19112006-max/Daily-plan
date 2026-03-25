@@ -44,7 +44,7 @@ export default function LoginPage({
           {/* Logo */}
           <div className="flex justify-center mb-8">
             <img
-              src="/assets/generated/planday-glass-logo-transparent.dim_600x160.png"
+              src="/assets/generated/planday-creative-logo-transparent.dim_600x180.png"
               alt="PlanDay"
               className="h-16 object-contain drop-shadow-lg"
             />

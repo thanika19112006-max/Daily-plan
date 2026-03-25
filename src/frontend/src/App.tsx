@@ -141,7 +141,7 @@ export default function App() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img
-                  src="/assets/generated/planday-glass-logo-transparent.dim_600x160.png"
+                  src="/assets/generated/planday-creative-logo-transparent.dim_600x180.png"
                   alt="PlanDay"
                   className="h-9 object-contain"
                 />
