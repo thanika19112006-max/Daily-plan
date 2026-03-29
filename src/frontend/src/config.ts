@@ -10,7 +10,6 @@ import { HttpAgent } from "@icp-sdk/core/agent";
 const DEFAULT_STORAGE_GATEWAY_URL = "https://blob.caffeine.ai";
 const DEFAULT_BUCKET_NAME = "default-bucket";
 const DEFAULT_PROJECT_ID = "0000000-0000-0000-0000-00000000000";
-const PLACEHOLDER_CANISTER_ID = "aaaaa-aa";
 
 interface JsonConfig {
   backend_host: string;
@@ -41,16 +40,13 @@ export async function loadConfig(): Promise<Config> {
     const response = await fetch(`${baseUrl}env.json`);
     const config = (await response.json()) as JsonConfig;
 
-    const resolvedCanisterId =
-      config.backend_canister_id !== "undefined"
-        ? config.backend_canister_id
-        : (backendCanisterId ?? PLACEHOLDER_CANISTER_ID);
-
     const fullConfig = {
       backend_host:
         config.backend_host === "undefined" ? undefined : config.backend_host,
-      backend_canister_id: resolvedCanisterId,
-      storage_gateway_url: process.env.STORAGE_GATEWAY_URL ?? DEFAULT_STORAGE_GATEWAY_URL,
+      backend_canister_id: (config.backend_canister_id === "undefined"
+        ? (backendCanisterId ?? "placeholder")
+        : config.backend_canister_id) as string,
+      storage_gateway_url: process.env.STORAGE_GATEWAY_URL ?? "nogateway",
       bucket_name: DEFAULT_BUCKET_NAME,
       project_id:
         config.project_id !== "undefined"
@@ -64,16 +60,14 @@ export async function loadConfig(): Promise<Config> {
     configCache = fullConfig;
     return fullConfig;
   } catch {
-    // Graceful fallback — app works without ICP backend (localStorage-only mode)
     const fallbackConfig = {
       backend_host: undefined,
-      backend_canister_id: backendCanisterId ?? PLACEHOLDER_CANISTER_ID,
+      backend_canister_id: backendCanisterId ?? "placeholder",
       storage_gateway_url: DEFAULT_STORAGE_GATEWAY_URL,
       bucket_name: DEFAULT_BUCKET_NAME,
       project_id: DEFAULT_PROJECT_ID,
       ii_derivation_origin: undefined,
     };
-    configCache = fallbackConfig;
     return fallbackConfig;
   }
 }
@@ -97,12 +91,17 @@ async function maybeLoadMockBackend(): Promise<backendInterface | null> {
   }
 
   try {
+    // If VITE_USE_MOCK is enabled, try to load a mock backend module *if it exists*.
+    // We use import.meta.glob so builds don't fail when the mock file is absent.
     const mockModules = import.meta.glob("./mocks/backend.{ts,tsx,js,jsx}");
+
     const path = Object.keys(mockModules)[0];
     if (!path) return null;
+
     const mod = (await mockModules[path]()) as {
       mockBackend?: backendInterface;
     };
+
     return mod.mockBackend ?? null;
   } catch {
     return null;
@@ -112,6 +111,7 @@ async function maybeLoadMockBackend(): Promise<backendInterface | null> {
 export async function createActorWithConfig(
   options?: CreateActorOptions,
 ): Promise<backendInterface> {
+  // Attempt to load mock backend if enabled
   const mock = await maybeLoadMockBackend();
   if (mock) {
     return mock;
